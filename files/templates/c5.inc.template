@@ -1,0 +1,59 @@
+# WordPress template
+index index.php index.html index.htm;
+
+location / {
+        set $do_rewrite 1;
+        if (-f $request_filename) {
+                set $do_rewrite 0;
+        }
+
+        if (-f $request_filename/index.html) {
+                set $do_rewrite 0;
+        }
+        if (-f $request_filename/index.php) {
+                set $do_rewrite 0;
+        }
+
+        if ($do_rewrite = "1") {
+                rewrite ^/(.*)$ /index.php/$1 last;
+        }
+        ${NO_USE_NAXSI}include naxsi.d/general/*.conf;
+}
+
+location ~* /\. {
+    deny all;
+}
+
+
+location ~* /application/files/.*\.php$ {
+    deny all;
+}
+
+location ~* /index.php/(login|dashboard.*|install.*)$ {
+    satisfy any;
+    allow 0.0.0.0/0;
+    allow 127.0.0.1;
+    deny all;
+    auth_basic "basic authentication";
+    auth_basic_user_file  "/home/kusanagi/.htpasswd";
+
+    location ~ [^/]\.php(/|$) {
+        include /etc/nginx/conf.d/fastcgi.inc;
+        ${NO_USE_NAXSI}include naxsi.d/general/*.conf;
+    }
+    ${NO_USE_SSLST}include conf.d/ssl_st.inc;
+    ${NO_USE_NAXSI}include naxsi.d/general/*.conf;
+}
+
+location ~ [^/]\.php(/|$) {
+    include conf.d/fastcgi.inc;
+    if ($http_cookie ~* "CONCRETE5_LOGIN") {
+        set $do_not_cache 1;
+    }
+
+    include conf.d/fastcgi_cache.inc;
+
+    add_header X-Signature KUSANAGI;
+    ${NO_USE_SSLST}include conf.d/ssl_st.inc;
+    ${NO_USE_NAXSI}include naxsi.d/wordpress/*.conf;
+}
